@@ -7,22 +7,7 @@ $(document).ready(function(){
     
     loadNote();
     
-    $("#note-list").on('click','button', function(event){
-        if($(event.target).hasClass("delete")){
-            var ID = event.target.name
-            var deleteSql = "DELETE FROM note WHERE ID = " + ID;
-            db.transaction(function(tx){
-                tx.executeSql(deleteSql, [], onDeleteSuccess, onError);   
-                
-            });
-            
-            function onDeleteSuccess(tx, rs){
-                $(event.target).parent().parent().hide("slow"); 
-                
-            }
-        }
-    });
-    
+    //单击提交更新和插入
     $("#submit-btn").click(function(event){
         event.preventDefault();
         var noteContent = $("textarea[name = note-content]").val();
@@ -31,15 +16,64 @@ $(document).ready(function(){
             alert("内容不能为空");
             return 
         }
-        var insertSql = "INSERT INTO note (note_content, note_date) VALUES('" + 
-            noteContent + "',DATETIME('now', 'localtime'))";
-        db.transaction(function(tx){
-            console.log(noteContent);
-            //console.log();
-//            tx.executeSql("INSERT INTO note (note_content, note_date) VALUES (?, DATETIME('now', 'localtime'))",[noteContent], onSuccess, onError); 
-            tx.executeSql(insertSql,[],onAddSuccess, onError);
-            console.log(insertSql);
-        });
+        if($(this).text() === "更新"){
+            var editNoteID = $("input[name = note-id]").val();
+            //var myDate = new Date();
+//            var updatesql = "UPDATE note SET note_content = '" + noteContent + "'," +
+//                "note_date = DATETIME('now', 'localtime'))" + 
+//                "WHERE ID = " + editNoteID;
+//            console.log(updatesql);
+            db.transaction(function(tx){
+                tx.executeSql("UPDATE note SET note_content = ?, note_date = DATETIME('now', 'localtime')   WHERE ID = ?", [noteContent, editNoteID], onUpdateSuccess, onError);   
+            })
+            
+            function onUpdateSuccess(tx, rs){
+                var findHtml = "button[name = " + editNoteID + "]";
+                var preNode  = $(findHtml).parent().parent();
+                $(findHtml).parent().parent().remove();
+            }
+        }
+        else{
+            var insertSql = "INSERT INTO note (note_content, note_date) VALUES('" + 
+                noteContent + "',DATETIME('now', 'localtime'))";
+            db.transaction(function(tx){
+                tx.executeSql(insertSql,[],onAddSuccess, onError);
+                console.log(insertSql);
+            });
+        }
+    });
+    
+    //为编辑和删除按钮委托
+    $("#note-list").on('click','button', function(event){
+        var ID = event.target.name
+        if($(event.target).hasClass("delete")){
+            var deleteSql = "DELETE FROM note WHERE ID = " + ID;
+            db.transaction(function(tx){
+                tx.executeSql(deleteSql, [], onDeleteSuccess, onError);   
+                
+            });
+            
+            function onDeleteSuccess(tx, rs){
+                $(event.target).parent().parent().hide("slow", function(){
+                    $(this).remove();   
+                });
+                
+            }
+        }
+        else{
+            var editSql = "SELECT * FROM note WHERE ID = " +ID
+            db.transaction(function(tx){
+                tx.executeSql(editSql, [], onEditSuccess, onError);
+            });
+            
+            function onEditSuccess(tx, rs){
+                var editNoteID = rs.rows.item(0).id;
+                var editNoteContent = rs.rows.item(0).note_content;
+                $("textarea[name = note-content]").val(editNoteContent);
+                $("#submit-btn").text("更新");
+                $("input[name=note-id]").val(editNoteID);
+            }
+        }
     });
     
     
@@ -87,7 +121,7 @@ $(document).ready(function(){
             html += "<li class = 'list-group-item'>" +
                      rs.rows.item(i).note_content    +
                     "<div class = 'btn-group btn-group-xs pull-right'>" +
-                    "<button class= 'btn btn-default delete' name = '"            +
+                    "<button class= 'btn btn-default delete' name = '"  +
                     rs.rows.item(i).id            + "'>删除</button>"    +
                     "<button class= 'btn btn-default edit' name = '"+
                     rs.rows.item(i).id            + "'>修改</button>"    +
