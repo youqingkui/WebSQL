@@ -6,7 +6,10 @@ $(document).ready(function(){
         tx.executeSql(sql);    
     });
     
+    test_fy();
     loadNote();
+    
+    
     
     
     //单击提交更新和插入
@@ -89,6 +92,9 @@ $(document).ready(function(){
                     $(this).remove();   
                 });
                 
+                
+                test_fy();
+                
             }
         }
         else{
@@ -133,12 +139,18 @@ $(document).ready(function(){
                $(html).insertBefore(firstLi).hide().show("slow");
             }, onError); 
             
-        });        
+        });
+        
+        test_fy();
     }
     
     /*加载所有笔记*/
-    function loadNote(){
-        var selctSql = "SELECT * FROM note ORDER BY ID DESC";
+    function loadNote(startNum, endNum){
+        var startNum = arguments[0] ? arguments[0] : 0;
+        var endNum  = arguments[1] ? arguments[1] : 10;
+        $(".pagination li").siblings().removeClass("active").eq(startNum/10).addClass("active");
+        var selctSql = "SELECT * FROM note ORDER BY ID DESC LIMIT " + startNum + "," + endNum;
+        console.log(selctSql);
         db.transaction(function(tx){
             tx.executeSql(selctSql, [], displayNote, onError);
                
@@ -147,7 +159,7 @@ $(document).ready(function(){
         /*执行sql成功后要做的事情，循环显示所有笔记*/
         function displayNote(tx, rs){
             var html = "";
-            //console.log(rs.rows);
+            console.log(rs.rows);
             for(var i = 0; i<rs.rows.length; i++){
                     html += "<li class = 'list-group-item'>" +
                      rs.rows.item(i).note_content    +
@@ -162,11 +174,55 @@ $(document).ready(function(){
                     "</small>"                       +
                     "</li>";
             }   
-            $("#note-list").html(html).hide().slideDown("slow");
+            $("#note-list").html(html);
         }
 
         
     }
+    
+    
+    
+    
+    /*测试分页*/
+    function test_fy(){
+        var Sql = "SELECT * FROM note ORDER BY ID DESC"
+        db.transaction(function(tx){
+            tx.executeSql(Sql, [], onSql, onError);
+        });
+        
+        
+        function onSql(tx, rs){
+            var limtNum = 10;
+            var count = rs.rows.length;
+            var page = Math.ceil(count/limtNum);
+            var html = "";
+            console.log("limtNum: " +limtNum + "\n"+
+                        "count: " + count + "\n" +
+                        "page: " +page );
+            for(var i =0; i<page; i++){
+                html += "<li><a href= '#'>" +  (i+1)  + "</a></li>"
+            }
+            $(".pagination").html(html);
+            $(".pagination li").first().addClass("active");
+        }
+    }
+    
+    
+    $(".pagination").on('click', 'a', function(event){
+        event.preventDefault();
+        var num = $(this).text();
+        if(num != 1){
+            var startNum = (num - 1) * 10;   
+            var endNum   =  10;
+            loadNote(startNum, endNum);
+        }
+        else{
+            loadNote();   
+        }
+        
+        
+    });
+    
     
     
     
